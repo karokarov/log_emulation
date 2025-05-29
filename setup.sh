@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# log_emulation/deploy.sh - Fixed Deployment Script (English)
+# log_emulation/deploy.sh - Robust Deployment Script with Container Diagnostics
 
 set -eo pipefail
 
@@ -12,132 +12,96 @@ NC='\033[0m'
 
 # Configuration
 REPO_URL="https://github.com/karokarov/log_emulation.git"
-PROJECT_DIR=$(basename "$(pwd)")
 
-# Logging function
-log() {
-    echo -e "${YELLOW}[$(date '+%H:%M:%S')] $1${NC}"
+# Verify we're in the correct directory
+if [ "$(basename "$(pwd)")" != "log_emulation" ]; then
+    echo -e "${RED}Error: Must run from log_emulation directory${NC}"
+    exit 1
+fi
+
+# Update project files
+echo -e "${YELLOW}Updating project files...${NC}"
+git stash push --include-untracked -m "Deployment stash" >/dev/null
+git pull --rebase origin main || {
+    echo -e "${RED}Error: Failed to update project files${NC}"
+    exit 1
 }
+echo -e "${GREEN}✓ Files updated${NC}"
 
-# Check if we're in the correct directory
-verify_location() {
-    if [ "$PROJECT_DIR" != "log_emulation" ]; then
-        echo -e "${RED}Error: Script must be run from log_emulation directory${NC}"
-        exit 1
-    fi
-}
+# Install packages (if not already installed)
+echo -e "${YELLOW}Checking dependencies...${NC}"
+if command -v zypper &>/dev/null; then
+    sudo zypper -n install -l git docker docker-compose python3 python3-pip || \
+    [ $? -eq 107 ] && echo "Packages already installed"
+else
+    sudo apt-get update && sudo apt-get install -y git docker.io docker-compose python3 python3-pip
+fi
+echo -e "${GREEN}✓ Dependencies checked${NC}"
 
-# Update project files from repository
-update_project() {
-    log "Updating project files..."
-    
-    # Stash local changes if any
-    git stash push --include-untracked -m "Auto-stash for deployment"
-    
-    # Force pull updates
-    if ! git pull --rebase origin main; then
-        echo -e "${RED}Error: Failed to update project files${NC}"
-        exit 1
-    fi
-    
-    echo -e "${GREEN}✓ Project files updated${NC}"
-}
+# Configure Docker
+echo -e "${YELLOW}Configuring Docker...${NC}"
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+if ! docker ps &>/dev/null; then
+    echo -e "${YELLOW}Run this command then restart script:${NC}"
+    echo "  newgrp docker"
+    exit 0
+fi
+echo -e "${GREEN}✓ Docker ready${NC}"
 
-# Package installation
-install_packages() {
-    log "Installing system dependencies..."
-    
-    if command -v zypper &>/dev/null; then
-        sudo zypper -n refresh
-        sudo zypper -n install git docker docker-compose python3 python3-pip || \
-        [ $? -eq 107 ] && echo "Packages already installed"
-    else
-        sudo apt-get update && sudo apt-get install -y git docker.io docker-compose python3 python3-pip
-    fi
-    
-    echo -e "${GREEN}✓ Packages installed/verified${NC}"
-}
+# Setup project structure
+echo -e "${YELLOW}Preparing project...${NC}"
+mkdir -p {web,app,integration}_server
+for server in web app integration; do
+    cp Dockerfile_template "${server}_server/Dockerfile"
+    cp log_generator_template.py "${server}_server/log_generator.py"
+    sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/log_generator.py"
+done
+echo -e "${GREEN}✓ Project prepared${NC}"
 
-# Docker configuration
-setup_docker() {
-    log "Configuring Docker..."
-    
-    sudo systemctl enable --now docker
-    sudo usermod -aG docker $USER
-    
-    if ! docker ps &>/dev/null; then
-        echo -e "${YELLOW}Manual step required:${NC}"
-        echo "  newgrp docker"
-        echo "Then re-run this script"
-        exit 0
-    fi
-    
-    echo -e "${GREEN}✓ Docker configured${NC}"
-}
+# Container management with enhanced diagnostics
+echo -e "${YELLOW}Starting containers...${NC}"
+docker-compose down 2>/dev/null || true
 
-# Project structure setup
-setup_project() {
-    log "Setting up project structure..."
+if ! docker-compose up -d --build; then
+    echo -e "\n${RED}Container startup failed. Diagnostics:${NC}"
+    echo -e "\n${YELLOW}Last logs from each service:${NC}"
+    docker-compose logs --tail=20
     
-    mkdir -p {web,app,integration}_server
-    
-    for server in web app integration; do
-        cp Dockerfile_template "${server}_server/Dockerfile"
-        cp log_generator_template.py "${server}_server/log_generator.py"
-        sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/log_generator.py"
+    echo -e "\n${YELLOW}Failed container details:${NC}"
+    docker-compose ps | grep -v "Up" | while read line; do
+        container_id=$(echo $line | awk '{print $1}')
+        service=$(echo $line | awk '{print $1}' | xargs docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}')
+        
+        echo -e "\nService: ${service}"
+        echo "Exit Code: $(docker inspect -f '{{.State.ExitCode}}' ${container_id})"
+        echo "Error: $(docker inspect -f '{{.State.Error}}' ${container_id})"
+        echo "Logs:"
+        docker logs --tail=20 ${container_id} 2>&1 | sed 's/^/  /'
     done
     
-    echo -e "${GREEN}✓ Project structure ready${NC}"
-}
+    exit 1
+fi
 
-# Container management
-manage_containers() {
-    log "Starting containers..."
-    
-    # Stop and remove existing containers if any
-    docker-compose down || true
-    
-    # Build and start new containers
-    if ! docker-compose up -d --build; then
-        echo -e "${RED}Error: Container startup failed${NC}"
-        echo -e "\n${YELLOW}Diagnostic information:${NC}"
-        docker-compose logs --tail=20
-        exit 1
-    fi
-    
-    # Verify container status
-    unhealthy=$(docker-compose ps --services | while read -r service; do 
-        if [ "$(docker-compose ps -q "$service" | xargs docker inspect -f '{{.State.Health.Status}}')" = "unhealthy" ]; then 
-            echo "$service"; 
-        fi
-    done)
-    
-    if [ -n "$unhealthy" ]; then
-        echo -e "${RED}Warning: Unhealthy containers detected:${NC}"
-        echo "$unhealthy"
-        echo -e "\n${YELLOW}Container logs:${NC}"
-        docker-compose logs --tail=20 $unhealthy
-    fi
-    
-    echo -e "${GREEN}✓ Containers running${NC}"
-    docker-compose ps
-}
+# Verify all containers are healthy
+echo -e "${YELLOW}Checking container health...${NC}"
+failed_containers=$(docker-compose ps -q | xargs docker inspect -f '{{if .State.Health}}{{if ne .State.Health.Status "healthy"}}{{.Name}}{{end}}{{end}}' | sed 's|/||')
 
-# Main function
-main() {
-    echo -e "\n${YELLOW}=== Log Emulation Deployment ==="
-    echo -e "Script version: 1.2 (fixed location)${NC}\n"
-    
-    verify_location
-    update_project
-    install_packages
-    setup_docker
-    setup_project
-    manage_containers
-    
-    echo -e "\n${GREEN}✓ Deployment completed successfully!${NC}"
-    echo -e "\nTo check logs:"
-    echo "  docker exec -it web1 tail -f /var/log/web/main.log"
-}
+if [ -n "$failed_containers" ]; then
+    echo -e "\n${RED}Unhealthy containers detected:${NC}"
+    for container in $failed_containers; do
+        service=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.service"}}' $container)
+        echo -e "\nService: ${service}"
+        echo "Status: $(docker inspect -f '{{.State.Health.Status}}' $container)"
+        echo "Logs:"
+        docker logs --tail=30 $container 2>&1 | sed 's/^/  /'
+    done
+    exit 1
+fi
 
-main "$@"
+echo -e "${GREEN}✓ All containers running and healthy${NC}"
+docker-compose ps
+
+echo -e "\n${GREEN}Deployment successful!${NC}"
+echo -e "\nTo check logs:"
+echo "  docker exec -it web1 tail -f /var/log/web/main.log"
