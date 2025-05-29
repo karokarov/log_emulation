@@ -1,0 +1,14 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY log_generator.py .
+
+RUN mkdir -p /var/log/{{SERVER_TYPE}} \
+    && chmod -R 777 /var/log # Разрешаем запись логов
+
+CMD ["python", "log_generator.py"]

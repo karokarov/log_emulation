@@ -1,0 +1,60 @@
+version: '3'
+
+networks:
+  lab_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+services:
+  web1:
+    build: ./web_server
+    container_name: web1
+    environment:
+      - SERVER_TYPE=web
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.11
+  web2:
+    build: ./web_server
+    container_name: web2
+    environment:
+      - SERVER_TYPE=web
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.12
+
+  app1:
+    build: ./app_server
+    container_name: app1
+    environment:
+      - SERVER_TYPE=app
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.21
+  app2:
+    build: ./app_server
+    container_name: app2
+    environment:
+      - SERVER_TYPE=app
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.22
+
+  int1:
+    build: ./integration_server
+    container_name: int1
+    environment:
+      - SERVER_TYPE=integration
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.31
+  int2:
+    build: ./integration_server
+    container_name: int2
+    environment:
+      - SERVER_TYPE=integration
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.32

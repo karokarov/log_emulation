@@ -1,0 +1,69 @@
+# Log Emulation Project - Initial Setup
+
+## Prerequisites
+- OpenSUSE 15
+- sudo privileges
+
+## Manual Initial Steps:
+
+1. Install git if not present:
+sudo zypper install -y git
+
+2. Clone the repository:
+git clone <repository_url> log_emulation
+cd log_emulation
+
+3. Make setup script executable and run it:
+chmod +x setup.sh
+./setup.sh
+
+4. After setup completes, verify containers are running:
+docker-compose ps
+
+
+## Дополнительные полезности
+
+7. Управление системой
+# Сборка и запуск контейнеров
+docker-compose up -d --build
+# Остановка
+docker-compose down
+# Перезапуск
+docker-compose restart
+
+# Проверка работы
+docker-compose ps
+
+8. Проверка логов
+bash
+# Проверить логи web-сервера
+docker exec -it web1 tail -f /var/log/web/main.log
+# Проверить логи документов
+docker exec -it app1 grep "DOCUMENT" /var/log/app/documents.log
+# Проверить размер логов
+docker exec -it int1 du -sh /var/log/integration/
+# Просмотр логов контейнеров
+docker-compose logs -f
+
+
+Accessing Logs:
+Web server logs:
+docker exec -it web1 tail -f /var/log/web/main.log
+App server logs:
+docker exec -it app1 tail -f /var/log/app/main.log
+
+
+
+9. Если возникают проблемы с SELinux:
+sudo setenforce 0
+sudo sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
+
+10.Для мониторинга ресурсов:
+sudo zypper install -y htop
+htop
+Для проверки сетевых соединений:
+sudo zypper install -y net-tools
+netstat -tulnp
+Для автоматической очистки Docker:
+# Добавьте в crontab
+(crontab -l 2>/dev/null; echo "0 3 * * * docker system prune -f") | crontab -
