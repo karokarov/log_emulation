@@ -94,6 +94,7 @@ start_containers() {
 }
 
 # Главная функция
+#ukfdyfz
 main() {
     clear
     echo -e "${YELLOW}=== Полное развертывание Log Emulation ===${NC}"
