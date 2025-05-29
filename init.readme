@@ -23,6 +23,10 @@ docker-compose ps
 
 ## Дополнительные полезности
 
+6. git
+git pull origin
+
+
 7. Управление системой
 # Сборка и запуск контейнеров
 docker-compose up -d --build

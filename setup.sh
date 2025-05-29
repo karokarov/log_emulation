@@ -1,56 +1,56 @@
 #!/bin/bash
 
-# log_emulation/deploy.sh - Исправленный рабочий скрипт
+# log_emulation/deploy.sh - Complete Deployment Script (English Version)
 
 set -eo pipefail
 
-# Цвета
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Логирование
+# Logging function
 log() {
     echo -e "${YELLOW}[$(date '+%H:%M:%S')] $1${NC}"
 }
 
-# Установка пакетов с игнорированием кода 107 (Nothing to do)
+# Package installation with zypper/apt compatibility
 install_packages() {
-    log "Установка пакетов..."
+    log "Installing system dependencies..."
     
     if command -v zypper &>/dev/null; then
         sudo zypper -n refresh
         sudo zypper -n install git docker docker-compose python3 python3-pip || \
-        [ $? -eq 107 ] && echo "Пакеты уже установлены"
+        [ $? -eq 107 ] && echo "Packages already installed"
     else
         sudo apt-get update && sudo apt-get install -y git docker.io docker-compose python3 python3-pip
     fi
     
-    echo -e "${GREEN}✓ Пакеты установлены/проверены${NC}"
+    echo -e "${GREEN}✓ Packages installed/verified${NC}"
 }
 
-# Настройка Docker
+# Docker configuration
 setup_docker() {
-    log "Настройка Docker..."
+    log "Configuring Docker..."
     
     sudo systemctl enable --now docker
     sudo usermod -aG docker $USER
     
-    # Проверка доступа к Docker
+    # Docker access check
     if ! docker ps &>/dev/null; then
-        echo -e "${YELLOW}Выполните вручную:${NC}"
+        echo -e "${YELLOW}Manual step required:${NC}"
         echo "  newgrp docker"
-        echo "И запустите скрипт снова"
+        echo "Then re-run this script"
         exit 0
     fi
     
-    echo -e "${GREEN}✓ Docker настроен${NC}"
+    echo -e "${GREEN}✓ Docker configured${NC}"
 }
 
-# Инициализация проекта
+# Project initialization
 init_project() {
-    log "Инициализация проекта..."
+    log "Initializing project..."
     
     [ -d "log_emulation" ] || git clone https://github.com/karokarov/log_emulation.git
     cd log_emulation
@@ -63,29 +63,29 @@ init_project() {
         sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/log_generator.py"
     done
     
-    echo -e "${GREEN}✓ Проект инициализирован${NC}"
+    echo -e "${GREEN}✓ Project initialized${NC}"
 }
 
-# Запуск контейнеров
+# Container startup
 start_containers() {
-    log "Запуск контейнеров..."
+    log "Starting containers..."
     docker-compose up -d --build
-    echo -e "${GREEN}✓ Контейнеры запущены${NC}"
+    echo -e "${GREEN}✓ Containers running${NC}"
     docker-compose ps
 }
 
-# Главная функция
+# Main function
 main() {
-    echo -e "\n${YELLOW}=== Полное развертывание ==="
-    echo -e "Версия скрипта: 1.1 (исправленная)${NC}\n"
+    echo -e "\n${YELLOW}=== Log Emulation Deployment ==="
+    echo -e "Script version: 1.1 (fixed)${NC}\n"
     
     install_packages
     setup_docker
     init_project
     start_containers
     
-    echo -e "\n${GREEN}✓ Развертывание завершено!${NC}"
-    echo -e "\nПроверка логов:"
+    echo -e "\n${GREEN}✓ Deployment completed!${NC}"
+    echo -e "\nTo check logs:"
     echo "  docker exec -it web1 tail -f /var/log/web/main.log"
 }
 
