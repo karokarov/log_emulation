@@ -25,6 +25,7 @@ docker-compose ps
 
 6. git
 git pull origin
+git fetch origin
 
 
 7. Управление системой

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# log_emulation/deploy.sh - Complete Deployment Script (English Version)
+# log_emulation/deploy.sh - Fixed Deployment Script (English)
 
 set -eo pipefail
 
@@ -10,12 +10,40 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# Configuration
+REPO_URL="https://github.com/karokarov/log_emulation.git"
+PROJECT_DIR=$(basename "$(pwd)")
+
 # Logging function
 log() {
     echo -e "${YELLOW}[$(date '+%H:%M:%S')] $1${NC}"
 }
 
-# Package installation with zypper/apt compatibility
+# Check if we're in the correct directory
+verify_location() {
+    if [ "$PROJECT_DIR" != "log_emulation" ]; then
+        echo -e "${RED}Error: Script must be run from log_emulation directory${NC}"
+        exit 1
+    fi
+}
+
+# Update project files from repository
+update_project() {
+    log "Updating project files..."
+    
+    # Stash local changes if any
+    git stash push --include-untracked -m "Auto-stash for deployment"
+    
+    # Force pull updates
+    if ! git pull --rebase origin main; then
+        echo -e "${RED}Error: Failed to update project files${NC}"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}✓ Project files updated${NC}"
+}
+
+# Package installation
 install_packages() {
     log "Installing system dependencies..."
     
@@ -37,7 +65,6 @@ setup_docker() {
     sudo systemctl enable --now docker
     sudo usermod -aG docker $USER
     
-    # Docker access check
     if ! docker ps &>/dev/null; then
         echo -e "${YELLOW}Manual step required:${NC}"
         echo "  newgrp docker"
@@ -48,12 +75,9 @@ setup_docker() {
     echo -e "${GREEN}✓ Docker configured${NC}"
 }
 
-# Project initialization
-init_project() {
-    log "Initializing project..."
-    
-    [ -d "log_emulation" ] || git clone https://github.com/karokarov/log_emulation.git
-    cd log_emulation
+# Project structure setup
+setup_project() {
+    log "Setting up project structure..."
     
     mkdir -p {web,app,integration}_server
     
@@ -63,13 +87,38 @@ init_project() {
         sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/log_generator.py"
     done
     
-    echo -e "${GREEN}✓ Project initialized${NC}"
+    echo -e "${GREEN}✓ Project structure ready${NC}"
 }
 
-# Container startup
-start_containers() {
+# Container management
+manage_containers() {
     log "Starting containers..."
-    docker-compose up -d --build
+    
+    # Stop and remove existing containers if any
+    docker-compose down || true
+    
+    # Build and start new containers
+    if ! docker-compose up -d --build; then
+        echo -e "${RED}Error: Container startup failed${NC}"
+        echo -e "\n${YELLOW}Diagnostic information:${NC}"
+        docker-compose logs --tail=20
+        exit 1
+    fi
+    
+    # Verify container status
+    unhealthy=$(docker-compose ps --services | while read -r service; do 
+        if [ "$(docker-compose ps -q "$service" | xargs docker inspect -f '{{.State.Health.Status}}')" = "unhealthy" ]; then 
+            echo "$service"; 
+        fi
+    done)
+    
+    if [ -n "$unhealthy" ]; then
+        echo -e "${RED}Warning: Unhealthy containers detected:${NC}"
+        echo "$unhealthy"
+        echo -e "\n${YELLOW}Container logs:${NC}"
+        docker-compose logs --tail=20 $unhealthy
+    fi
+    
     echo -e "${GREEN}✓ Containers running${NC}"
     docker-compose ps
 }
@@ -77,14 +126,16 @@ start_containers() {
 # Main function
 main() {
     echo -e "\n${YELLOW}=== Log Emulation Deployment ==="
-    echo -e "Script version: 1.1 (fixed)${NC}\n"
+    echo -e "Script version: 1.2 (fixed location)${NC}\n"
     
+    verify_location
+    update_project
     install_packages
     setup_docker
-    init_project
-    start_containers
+    setup_project
+    manage_containers
     
-    echo -e "\n${GREEN}✓ Deployment completed!${NC}"
+    echo -e "\n${GREEN}✓ Deployment completed successfully!${NC}"
     echo -e "\nTo check logs:"
     echo "  docker exec -it web1 tail -f /var/log/web/main.log"
 }
