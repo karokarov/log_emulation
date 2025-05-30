@@ -1,14 +1,17 @@
 FROM python:3.9-slim
 
+ARG SERVER_TYPE
+ENV SERVER_TYPE=${SERVER_TYPE}
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
-COPY log_generator.py .
+RUN mkdir -p /var/log/${SERVER_TYPE} \
+    && chmod -R 777 /var/log
 
-RUN mkdir -p /var/log/{{SERVER_TYPE}} \
-    && chmod -R 777 /var/log # Разрешаем запись логов
+COPY log_generator.py .
 
 CMD ["python", "log_generator.py"]

@@ -6,6 +6,7 @@ import uuid
 import logging
 from logging.handlers import RotatingFileHandler
 
+
 # Конфигурация сервера
 server_type = os.environ.get('SERVER_TYPE', 'web')
 container_name = os.environ.get('HOSTNAME', '')

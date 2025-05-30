@@ -9,7 +9,10 @@ networks:
 
 services:
   web1:
-    build: ./web_server
+    build: 
+      context: ./web_server
+      args:
+        SERVER_TYPE: web
     container_name: web1
     environment:
       - SERVER_TYPE=web
@@ -17,16 +20,20 @@ services:
       lab_net:
         ipv4_address: 172.20.0.11
   web2:
-    build: ./web_server
+    build: 
+      context: ./web_server
+      args:
+        SERVER_TYPE: web
     container_name: web2
-    environment:
-      - SERVER_TYPE=web
     networks:
       lab_net:
         ipv4_address: 172.20.0.12
 
   app1:
-    build: ./app_server
+    build: 
+      context: ./app_server
+      args:
+        SERVER_TYPE: app
     container_name: app1
     environment:
       - SERVER_TYPE=app
@@ -34,16 +41,20 @@ services:
       lab_net:
         ipv4_address: 172.20.0.21
   app2:
-    build: ./app_server
+    build: 
+      context: ./app_server
+      args:
+        SERVER_TYPE: app
     container_name: app2
-    environment:
-      - SERVER_TYPE=app
     networks:
       lab_net:
         ipv4_address: 172.20.0.22
 
   int1:
-    build: ./integration_server
+    build: 
+      context: ./integration_server
+      args:
+        SERVER_TYPE: integration
     container_name: int1
     environment:
       - SERVER_TYPE=integration
@@ -51,10 +62,11 @@ services:
       lab_net:
         ipv4_address: 172.20.0.31
   int2:
-    build: ./integration_server
+    build: 
+      context: ./integration_server
+      args:
+        SERVER_TYPE: integration
     container_name: int2
-    environment:
-      - SERVER_TYPE=integration
     networks:
       lab_net:
         ipv4_address: 172.20.0.32
