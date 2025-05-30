@@ -51,6 +51,34 @@ document_stages = {
     'web_return': ['received_from_app', 'finalized', 'completed']
 }
 
+def get_blog_directory():
+    """Создает структуру директорий для сложных логов blog/[day]/[hour]"""
+    now = datetime.now()
+    base_dir = f"/var/log/{server_type}/blog"
+    date_dir = os.path.join(base_dir, str(now.day))
+    hour_dir = os.path.join(date_dir, str(now.hour))
+    
+    os.makedirs(hour_dir, exist_ok=True)
+    return hour_dir
+
+def generate_blog_log():
+    """Генерирует лог в новой структуре blog/[day]/[hour]/[guid].txt"""
+    log_dir = get_blog_directory()
+    log_file = os.path.join(log_dir, f"{uuid.uuid4()}.txt")
+    
+    log_content = f"""Document processing details:
+- UUID: {uuid.uuid4()}
+- Server: {server_type}
+- Timestamp: {datetime.now().isoformat()}
+- Status: {"SUCCESS" if random.random() > 0.2 else "FAILED"}
+- Processing time: {random.uniform(0.1, 2.5):.2f}s
+"""
+    
+    with open(log_file, 'w') as f:
+        f.write(log_content)
+    
+    main_logger.info(f"Generated blog log: {log_file}")
+
 def generate_document_flow(guid):
     """Генерация полного workflow для документа"""
     if server_type == 'web':
@@ -107,32 +135,22 @@ def generate_regular_logs():
     message = random.choice(messages[server_type])
     main_logger.info(message)
 
-def write_to_dynamic_dir():
-    """Запись в динамические директории"""
-    now = datetime.now()
-    dynamic_dir = f"/var/log/{server_type}/hourly/{now.strftime('%Y-%m-%d_%H')}"
-    os.makedirs(dynamic_dir, exist_ok=True)
-    
-    log_file = os.path.join(dynamic_dir, f"{server_type}_hourly.log")
-    with open(log_file, 'a') as f:
-        f.write(f"{datetime.now().isoformat()} - Dynamic log entry\n")
-
-def cleanup_old_logs():
-    """Очистка старых логов в динамических директориях"""
-    log_dir = f"/var/log/{server_type}/hourly"
-    if os.path.exists(log_dir):
+def cleanup_old_blog_logs():
+    """Очистка старых логов в blog директориях (старше 7 дней)"""
+    blog_dir = f"/var/log/{server_type}/blog"
+    if os.path.exists(blog_dir):
         now = time.time()
-        for dirname in os.listdir(log_dir):
-            dirpath = os.path.join(log_dir, dirname)
-            # Удаляем директории старше 24 часов
-            if os.path.isdir(dirpath) and (now - os.path.getmtime(dirpath)) > 86400:
-                for f in os.listdir(dirpath):
-                    os.remove(os.path.join(dirpath, f))
-                os.rmdir(dirpath)
+        for day_dir in os.listdir(blog_dir):
+            day_path = os.path.join(blog_dir, day_dir)
+            if os.path.isdir(day_path) and (now - os.path.getmtime(day_path)) > 7*86400:
+                for root, _, files in os.walk(day_path, topdown=False):
+                    for file in files:
+                        os.remove(os.path.join(root, file))
+                    os.rmdir(root)
 
 def main():
     # Создаем необходимые директории
-    os.makedirs(f"/var/log/{server_type}/hourly", exist_ok=True)
+    os.makedirs(f"/var/log/{server_type}/blog", exist_ok=True)
     
     while True:
         # Регулярные логи сервера
@@ -143,10 +161,13 @@ def main():
             doc_guid = str(uuid.uuid4())
             generate_document_flow(doc_guid)
         
-        # Каждый час пишем в динамическую директорию
+        # 20% chance сгенерировать blog лог
+        if random.random() < 0.2:
+            generate_blog_log()
+        
+        # Очистка старых логов каждый час
         if datetime.now().minute == 0:
-            write_to_dynamic_dir()
-            cleanup_old_logs()
+            cleanup_old_blog_logs()
         
         sleep_time = random.randint(5, 20)
         time.sleep(sleep_time)
