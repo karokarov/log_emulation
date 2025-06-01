@@ -12,10 +12,11 @@ RUN apk add --no-cache procps curl && \
 
 # Копируем и распаковываем Filebeat
 COPY filebeat-8.13.4-linux-x86_64.tar.gz /tmp/
-RUN tar xzvf /tmp/filebeat-8.13.4-linux-x86_64.tar.gz -C /usr/share/ \
-    && rm /tmp/filebeat-8.13.4-linux-x86_64.tar.gz \
-    && mv /usr/share/filebeat-8.13.4-linux-x86_64 /usr/share/filebeat \
-    && mkdir -p /var/log/${SERVER_TYPE}/blog
+RUN tar xzvf /tmp/filebeat-8.13.4-linux-x86_64.tar.gz -C /usr/share/ && \
+    rm /tmp/filebeat-8.13.4-linux-x86_64.tar.gz && \
+    mv /usr/share/filebeat-8.13.4-linux-x86_64 /usr/share/filebeat && \
+    chmod +x /usr/share/filebeat/filebeat && \ 
+    mkdir -p /var/log/${SERVER_TYPE}/blog
 
 # Копирование конфигов
 COPY log_generator.py /app/log_generator.py

@@ -66,7 +66,7 @@ for server in web app integration; do
 done
 echo -e "${GREEN}✓ Project prepared${NC}"
 
-# Container management with enhanced diagnostics
+# Container management
 echo -e "${YELLOW}Starting containers...${NC}"
 docker-compose down 2>/dev/null || true
 
