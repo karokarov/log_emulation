@@ -12,11 +12,12 @@ RUN apk add --no-cache \
     && mkdir -p /var/log/${SERVER_TYPE} \
     && chmod -R 777 /var/log
 
+# Копируем Filebeat из локальной папки
+COPY ../filebeat-8.13.4-linux-x86_64.tar.gz /tmp/
 # Установка Filebeat
-RUN curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.13.4-linux-x86_64.tar.gz \
-    && tar xzvf filebeat-8.13.4-linux-x86_64.tar.gz \
-    && rm filebeat-8.13.4-linux-x86_64.tar.gz \
-    && mv filebeat-8.13.4-linux-x86_64 /usr/share/filebeat \
+RUN tar xzvf /tmp/filebeat-8.13.4-linux-x86_64.tar.gz -C /usr/share/ \
+    && rm /tmp/filebeat-8.13.4-linux-x86_64.tar.gz \
+    && mv /usr/share/filebeat-8.13.4-linux-x86_64 /usr/share/filebeat \
     && mkdir -p /var/log/${SERVER_TYPE}/blog
 
 # Копирование конфигов
