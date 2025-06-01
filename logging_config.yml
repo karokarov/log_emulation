@@ -1,0 +1,9 @@
+# logging_config.yml
+elasticsearch:
+  indices:
+    - "logs-app-simple"
+    - "logs-app-blog" 
+    - "logs-web-simple"
+    - "logs-web-blog"
+    - "logs-int-simple"
+    - "logs-int-blog"

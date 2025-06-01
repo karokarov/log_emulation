@@ -55,7 +55,9 @@ mkdir -p {web,app,integration}_server
 for server in web app integration; do
     cp Dockerfile_template "${server}_server/Dockerfile"
     cp log_generator_template.py "${server}_server/log_generator.py"
+    cp filebeat_template.yml "${server}_server/filebeat.yml"
     sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/log_generator.py"
+    sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/filebeat.yml"
 done
 echo -e "${GREEN}✓ Project prepared${NC}"
 
@@ -124,7 +126,7 @@ docker-compose exec minio mc alias set local http://minio:9000 admin password123
 # Initialize Elasticsearch indices
 echo -e "${YELLOW}Creating Elasticsearch indices...${NC}"
 until curl -s -X GET "http://localhost:9200/_cluster/health" >/dev/null; do sleep 5; done
-for index in $(yq e '.elasticsearch.indices[]' minio_config.yml); do
+for index in $(yq e '.elasticsearch.indices[]' logging_config.yml); do
   curl -s -X PUT "http://localhost:9200/$index" -H 'Content-Type: application/json' -d'
   {
     "settings": {
@@ -146,7 +148,7 @@ echo -e "${GREEN}✓ Elasticsearch indices created${NC}"
 
 echo -e "\n${GREEN}Deployment successful!${NC}"
 echo -e "\nAccess:"
-echo "MinIO Console: http://192.168.0.4:9001"
-echo "Kibana: http://192.168.0.4:5601"
+echo "MinIO Console: http://192.168.0.13:9001"
+echo "Kibana: http://192.168.0.13:5601"
 echo -e "\nTo check logs:"
 echo "docker exec -it web1 tail -f /var/log/web/main.log"

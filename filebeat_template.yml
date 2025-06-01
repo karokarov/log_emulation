@@ -1,0 +1,50 @@
+filebeat.inputs:
+- type: filestream
+  enabled: true
+  paths:
+    - /var/log/{{SERVER_TYPE}}/*.log  # Все .log файлы в корне
+  fields:
+    server_type: "{{SERVER_TYPE}}"
+    log_type: "simple"
+  fields_under_root: true
+
+- type: filestream
+  enabled: true
+  paths:
+    - /var/log/{{SERVER_TYPE}}/blog/**/*.txt  # Все .txt в blog/ и подпапках
+  parsers:
+    - ndjson:
+        target: ""
+        overwrite_keys: true
+        add_error_key: true
+  fields:
+    server_type: "{{SERVER_TYPE}}"
+    log_type: "blog"
+  fields_under_root: true
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  indices:
+    - index: "logs-{{SERVER_TYPE}}-simple"
+      when.equals:
+        log_type: "simple"
+    - index: "logs-{{SERVER_TYPE}}-blog"
+      when.equals:
+        log_type: "blog"
+
+output.s3:
+  enabled: true
+  bucket: "{{SERVER_TYPE}}-{{log_type}}"
+  endpoint: "http://minio:9000"
+  access_key_id: "admin"
+  secret_access_key: "password123"
+  region: "ru-msk"
+  timeout: "30s"
+
+filebeat.registry:
+  file: /usr/share/filebeat/data/registry
+  permissions: 0644
+
+monitoring:
+  enabled: true
+  cluster_uuid: "filebeat-{{SERVER_TYPE}}"
