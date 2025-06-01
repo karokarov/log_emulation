@@ -102,17 +102,22 @@ fi
 echo -e "${GREEN}✓ All containers running and healthy${NC}"
 docker-compose ps
 
-# Initialize MinIO structure (ТЕПЕРЬ ПОСЛЕ ЗАПУСКА КОНТЕЙНЕРОВ)
+# Initialize MinIO structure (alternative)
 echo -e "${YELLOW}Initializing MinIO structure...${NC}"
 sleep 10  # Даем время контейнерам полностью запуститься
-docker run --rm --network=log_emulation_lab_net -v $(pwd)/minio_config.yml:/config.yml minio/mc \
-  bash -c "
-    until mc alias set local http://minio:9000 admin password123; do sleep 2; done;
-    while read -r bucket; do mc mb local/\$bucket || true; done < <(yq e '.minio.buckets[]' /config.yml);
+
+docker run --rm --network=log_emulation_lab_net minio/mc \
+  sh -c "
+    mc alias set local http://minio:9000 admin password123 || exit 1;
+    mc mb local/APP/simple || true;
+    mc mb local/APP/blog || true;
+    mc mb local/WEB/simple || true;
+    mc mb local/WEB/blog || true;
+    mc mb local/INT/simple || true;
+    mc mb local/INT/blog || true;
     echo 'MinIO buckets created successfully'
   " || {
     echo -e "${RED}Error: Failed to initialize MinIO structure${NC}";
-    docker-compose logs minio;
     exit 1;
   }
 echo -e "${GREEN}✓ MinIO structure initialized${NC}"
