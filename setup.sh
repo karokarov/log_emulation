@@ -102,6 +102,43 @@ fi
 echo -e "${GREEN}✓ All containers running and healthy${NC}"
 docker-compose ps
 
+# Initialize MinIO structure (ДОБАВЛЕНО В КОНЕЦ!)
+echo -e "${YELLOW}Initializing MinIO structure...${NC}"
+docker run --rm --network=lab_net -v $(pwd)/minio_config.yml:/config.yml minio/mc \
+  bash -c "
+    mc alias set local http://minio:9000 admin password123;
+    while read -r bucket; do mc mb local/\$bucket; done < <(yq e '.minio.buckets[]' /config.yml);
+    echo 'MinIO buckets created successfully'
+  " || {
+    echo -e "${RED}Error: Failed to initialize MinIO structure${NC}";
+    exit 1;
+  }
+echo -e "${GREEN}✓ MinIO structure initialized${NC}"
+
+# Initialize Elasticsearch indices (ДОБАВЛЕНО В КОНЕЦ!)
+echo -e "${YELLOW}Creating Elasticsearch indices...${NC}"
+for index in $(yq e '.elasticsearch.indices[]' minio_config.yml); do
+  curl -X PUT "http://localhost:9200/$index" -H 'Content-Type: application/json' -d'
+  {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {"type": "date"},
+        "message": {"type": "text"},
+        "server_type": {"type": "keyword"},
+        "log_type": {"type": "keyword"}
+      }
+    }
+  }' || echo "Index $index may already exist"
+done
+echo -e "${GREEN}✓ Elasticsearch indices created${NC}"
+
 echo -e "\n${GREEN}Deployment successful!${NC}"
+echo -e "\nAccess:"
+echo "MinIO Console: http://192.168.0.4:9001"
+echo "Kibana: http://192.168.0.4:5601"
 echo -e "\nTo check logs:"
-echo "  docker exec -it web1 tail -f /var/log/web/main.log"
+echo "docker exec -it web1 tail -f /var/log/web/main.log"
