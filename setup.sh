@@ -102,25 +102,23 @@ fi
 echo -e "${GREEN}✓ All containers running and healthy${NC}"
 docker-compose ps
 
-# Initialize MinIO structure (alternative)
+# Initialize MinIO structure
 echo -e "${YELLOW}Initializing MinIO structure...${NC}"
-sleep 10  # Даем время контейнерам полностью запуститься
+sleep 10  # Wait for MinIO to start
 
-docker run --rm --network=log_emulation_lab_net minio/mc \
-  sh -c "
-    mc alias set local http://minio:9000 admin password123 || exit 1;
-    mc mb local/APP/simple || true;
-    mc mb local/APP/blog || true;
-    mc mb local/WEB/simple || true;
-    mc mb local/WEB/blog || true;
-    mc mb local/INT/simple || true;
-    mc mb local/INT/blog || true;
-    echo 'MinIO buckets created successfully'
-  " || {
-    echo -e "${RED}Error: Failed to initialize MinIO structure${NC}";
-    exit 1;
-  }
-echo -e "${GREEN}✓ MinIO structure initialized${NC}"
+docker-compose exec minio mc alias set local http://minio:9000 admin password123 && \
+docker-compose exec minio mc mb local/APP/simple || true && \
+docker-compose exec minio mc mb local/APP/blog || true && \
+docker-compose exec minio mc mb local/WEB/simple || true && \
+docker-compose exec minio mc mb local/WEB/blog || true && \
+docker-compose exec minio mc mb local/INT/simple || true && \
+docker-compose exec minio mc mb local/INT/blog || true && {
+  echo -e "${GREEN}✓ MinIO structure initialized${NC}"
+} || {
+  echo -e "${RED}Error: Failed to initialize MinIO structure${NC}"
+  docker-compose logs minio
+  exit 1
+}
 
 # Initialize Elasticsearch indices
 echo -e "${YELLOW}Creating Elasticsearch indices...${NC}"
