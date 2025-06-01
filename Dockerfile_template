@@ -25,4 +25,4 @@ COPY filebeat.yml /usr/share/filebeat/filebeat.yml
 RUN chmod go-w /usr/share/filebeat/filebeat.yml \
     && chown root:root /usr/share/filebeat/filebeat.yml
 
-CMD (cd /usr/share/filebeat && ./filebeat -e -c filebeat.yml) & python /app/log_generator.py
+CMD (cd /usr/share/filebeat && ./filebeat -c filebeat.yml --quiet) & python /app/log_generator.py
