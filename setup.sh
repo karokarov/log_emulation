@@ -110,12 +110,14 @@ sleep 10  # Wait for MinIO to start
 
 # Create buckets with valid names
 docker-compose exec minio mc alias set local http://minio:9000 admin password123 && {
-  docker-compose exec minio mc mb local/app-simple || true
-  docker-compose exec minio mc mb local/app-blog || true
-  docker-compose exec minio mc mb local/web-simple || true
-  docker-compose exec minio mc mb local/web-blog || true
-  docker-compose exec minio mc mb local/int-simple || true
-  docker-compose exec minio mc mb local/int-blog || true
+  for bucket in app-simple app-blog web-simple web-blog int-simple int-blog; do
+    docker-compose exec minio mc rb --force local/$bucket 2>/dev/null || true  # Игнорируем ошибки, если бакета нет
+    docker-compose exec minio mc mb local/$bucket || {
+      echo -e "${RED}Error: Failed to create bucket $bucket${NC}"
+      docker-compose logs minio
+      exit 1
+    }
+  done
   echo -e "${GREEN}✓ MinIO structure initialized${NC}"
 } || {
   echo -e "${RED}Error: Failed to initialize MinIO structure${NC}"
@@ -126,7 +128,8 @@ docker-compose exec minio mc alias set local http://minio:9000 admin password123
 # Initialize Elasticsearch indices
 echo -e "${YELLOW}Creating Elasticsearch indices...${NC}"
 until curl -s -X GET "http://localhost:9200/_cluster/health" >/dev/null; do sleep 5; done
-for index in $(yq e '.elasticsearch.indices[]' logging_config.yml); do
+
+for index in logs-app-simple logs-app-blog logs-web-simple logs-web-blog logs-int-simple logs-int-blog; do
   curl -s -X PUT "http://localhost:9200/$index" -H 'Content-Type: application/json' -d'
   {
     "settings": {
