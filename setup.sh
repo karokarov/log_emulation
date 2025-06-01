@@ -58,6 +58,7 @@ for server in web app integration; do
     cp filebeat_template.yml "${server}_server/filebeat.yml"
     sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/log_generator.py"
     sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/filebeat.yml"
+    sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/Dockerfile"  # <- Обновляем SERVER_TYPE в Dockerfile
 done
 echo -e "${GREEN}✓ Project prepared${NC}"
 

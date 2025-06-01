@@ -12,6 +12,20 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /var/log/${SERVER_TYPE} \
     && chmod -R 777 /var/log
 
-COPY log_generator.py .
+# Установка Filebeat
+RUN apt-get update && apt-get install -y curl && \
+    curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.13.4-linux-x86_64.tar.gz && \
+    tar xzvf filebeat-8.13.4-linux-x86_64.tar.gz && \
+    rm filebeat-8.13.4-linux-x86_64.tar.gz && \
+    mv filebeat-8.13.4-linux-x86_64 /usr/share/filebeat && \
+    mkdir -p /var/log/{{SERVER_TYPE}}/blog
 
-CMD ["python", "log_generator.py"]
+# Копирование конфигов и скриптов
+COPY log_generator.py /app/log_generator.py
+COPY filebeat.yml /usr/share/filebeat/filebeat.yml 
+
+# Права
+RUN chmod go-w /usr/share/filebeat/filebeat.yml && \
+    chown root:root /usr/share/filebeat/filebeat.yml
+
+CMD (cd /usr/share/filebeat && ./filebeat -e -c filebeat.yml) & python /app/log_generator.py
