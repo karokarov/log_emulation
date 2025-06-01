@@ -102,23 +102,26 @@ fi
 echo -e "${GREEN}✓ All containers running and healthy${NC}"
 docker-compose ps
 
-# Initialize MinIO structure (ДОБАВЛЕНО В КОНЕЦ!)
+# Initialize MinIO structure (ТЕПЕРЬ ПОСЛЕ ЗАПУСКА КОНТЕЙНЕРОВ)
 echo -e "${YELLOW}Initializing MinIO structure...${NC}"
-docker run --rm --network=lab_net -v $(pwd)/minio_config.yml:/config.yml minio/mc \
+sleep 10  # Даем время контейнерам полностью запуститься
+docker run --rm --network=log_emulation_lab_net -v $(pwd)/minio_config.yml:/config.yml minio/mc \
   bash -c "
-    mc alias set local http://minio:9000 admin password123;
-    while read -r bucket; do mc mb local/\$bucket; done < <(yq e '.minio.buckets[]' /config.yml);
+    until mc alias set local http://minio:9000 admin password123; do sleep 2; done;
+    while read -r bucket; do mc mb local/\$bucket || true; done < <(yq e '.minio.buckets[]' /config.yml);
     echo 'MinIO buckets created successfully'
   " || {
     echo -e "${RED}Error: Failed to initialize MinIO structure${NC}";
+    docker-compose logs minio;
     exit 1;
   }
 echo -e "${GREEN}✓ MinIO structure initialized${NC}"
 
-# Initialize Elasticsearch indices (ДОБАВЛЕНО В КОНЕЦ!)
+# Initialize Elasticsearch indices
 echo -e "${YELLOW}Creating Elasticsearch indices...${NC}"
+until curl -s -X GET "http://localhost:9200/_cluster/health" >/dev/null; do sleep 5; done
 for index in $(yq e '.elasticsearch.indices[]' minio_config.yml); do
-  curl -X PUT "http://localhost:9200/$index" -H 'Content-Type: application/json' -d'
+  curl -s -X PUT "http://localhost:9200/$index" -H 'Content-Type: application/json' -d'
   {
     "settings": {
       "number_of_shards": 1,
@@ -135,6 +138,7 @@ for index in $(yq e '.elasticsearch.indices[]' minio_config.yml); do
   }' || echo "Index $index may already exist"
 done
 echo -e "${GREEN}✓ Elasticsearch indices created${NC}"
+
 
 echo -e "\n${GREEN}Deployment successful!${NC}"
 echo -e "\nAccess:"
