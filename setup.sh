@@ -106,13 +106,14 @@ docker-compose ps
 echo -e "${YELLOW}Initializing MinIO structure...${NC}"
 sleep 10  # Wait for MinIO to start
 
-docker-compose exec minio mc alias set local http://minio:9000 admin password123 && \
-docker-compose exec minio mc mb local/APP/simple || true && \
-docker-compose exec minio mc mb local/APP/blog || true && \
-docker-compose exec minio mc mb local/WEB/simple || true && \
-docker-compose exec minio mc mb local/WEB/blog || true && \
-docker-compose exec minio mc mb local/INT/simple || true && \
-docker-compose exec minio mc mb local/INT/blog || true && {
+# Create buckets with valid names
+docker-compose exec minio mc alias set local http://minio:9000 admin password123 && {
+  docker-compose exec minio mc mb local/app-simple || true
+  docker-compose exec minio mc mb local/app-blog || true
+  docker-compose exec minio mc mb local/web-simple || true
+  docker-compose exec minio mc mb local/web-blog || true
+  docker-compose exec minio mc mb local/int-simple || true
+  docker-compose exec minio mc mb local/int-blog || true
   echo -e "${GREEN}✓ MinIO structure initialized${NC}"
 } || {
   echo -e "${RED}Error: Failed to initialize MinIO structure${NC}"
