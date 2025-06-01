@@ -25,10 +25,10 @@ filebeat.inputs:
 output.elasticsearch:
   hosts: ["http://elasticsearch:9200"]
   indices:
-    - index: "logs-{{SERVER_TYPE}}-simple"
+    - index: "{{SERVER_TYPE}}-simple"
       when.equals:
         log_type: "simple"
-    - index: "logs-{{SERVER_TYPE}}-blog"
+    - index: "{{SERVER_TYPE}}-blog"
       when.equals:
         log_type: "blog"
 

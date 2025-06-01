@@ -130,21 +130,7 @@ echo -e "${YELLOW}Creating Elasticsearch indices...${NC}"
 until curl -s -X GET "http://localhost:9200/_cluster/health" >/dev/null; do sleep 5; done
 
 for index in logs-app-simple logs-app-blog logs-web-simple logs-web-blog logs-int-simple logs-int-blog; do
-  curl -s -X PUT "http://localhost:9200/$index" -H 'Content-Type: application/json' -d'
-  {
-    "settings": {
-      "number_of_shards": 1,
-      "number_of_replicas": 0
-    },
-    "mappings": {
-      "properties": {
-        "@timestamp": {"type": "date"},
-        "message": {"type": "text"},
-        "server_type": {"type": "keyword"},
-        "log_type": {"type": "keyword"}
-      }
-    }
-  }' || echo "Index $index may already exist"
+  curl -s -X PUT "http://localhost:9200/_data_stream/$index" || echo "Data stream $index may already exist"
 done
 echo -e "${GREEN}✓ Elasticsearch indices created${NC}"
 
