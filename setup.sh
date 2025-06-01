@@ -56,6 +56,10 @@ for server in web app integration; do
     cp Dockerfile_template "${server}_server/Dockerfile"
     cp log_generator_template.py "${server}_server/log_generator.py"
     cp filebeat_template.yml "${server}_server/filebeat.yml"
+    cp ../filebeat-8.13.4-linux-x86_64.tar.gz "${server}_server/" || {
+        echo -e "${RED}Error: Filebeat archive not found at ../filebeat-8.13.4-linux-x86_64.tar.gz${NC}"
+        exit 1
+    }
     sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/log_generator.py"
     sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/filebeat.yml"
     sed -i "s/{{SERVER_TYPE}}/$server/g" "${server}_server/Dockerfile"  # <- Обновляем SERVER_TYPE в Dockerfile
