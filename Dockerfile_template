@@ -17,12 +17,15 @@ RUN apk add --no-cache \
     git \
     make \
     gcc \
-    musl-dev
+    musl-dev \
+    libc-dev \
+    bash \  
 
 # 3. Сборка Filebeat
 RUN git clone --branch v8.13.4 --depth 1 https://github.com/elastic/beats.git \
     && cd beats/filebeat \
-    && GOOS=linux GOARCH=amd64 make \
+    && export SHELL=/bin/bash \
+    && GOOS=linux GOARCH=amd64 /bin/bash -c "make" \
     && mkdir -p /usr/share/filebeat \
     && mv filebeat /usr/share/filebeat/ \
     && chmod +x /usr/share/filebeat/filebeat \
