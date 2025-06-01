@@ -22,7 +22,7 @@ services:
       - "9000:9000"  # S3 API
       - "9001:9001"  # Web Console
     networks:
-      logging_net:
+      lab_net:
         ipv4_address: 172.20.0.101
 
   elasticsearch:
@@ -37,7 +37,7 @@ services:
     ports:
       - "9200:9200"
     networks:
-      logging_net:
+      lab_net:
         ipv4_address: 172.20.0.102
 
   kibana:
@@ -50,7 +50,7 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     networks:
-      logging_net:
+      lab_net:
         ipv4_address: 172.20.0.103
 
   # Серверы с генерацией логов
