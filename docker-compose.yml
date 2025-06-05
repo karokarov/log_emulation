@@ -1,0 +1,135 @@
+﻿services:
+  minio:
+    build:
+      context: .
+      dockerfile: minio.dockerfile
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.101
+
+
+  elasticsearch:
+    image: elasticsearch:8.13.4
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.102
+
+  kibana:
+    image: kibana:8.13.4
+    container_name: kibana
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.103
+
+  web1:
+    build:
+      context: ./shared/web
+    container_name: web1
+    environment:
+      - SERVER_TYPE=web
+    volumes:
+      - shared_logs:/var/log/shared
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.11
+
+  web2:
+    build:
+      context: ./shared/web
+    container_name: web2
+    environment:
+      - SERVER_TYPE=web
+    volumes:
+      - shared_logs:/var/log/shared
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.12
+
+  app1:
+    build:
+      context: ./shared/app
+    container_name: app1
+    environment:
+      - SERVER_TYPE=app
+    volumes:
+      - shared_logs:/var/log/shared
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.21
+
+  app2:
+    build:
+      context: ./shared/app
+    container_name: app2
+    environment:
+      - SERVER_TYPE=app
+    volumes:
+      - shared_logs:/var/log/shared
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.22
+
+  int1:
+    build:
+      context: ./shared/int
+    container_name: int1
+    environment:
+      - SERVER_TYPE=integration
+    volumes:
+      - shared_logs:/var/log/shared
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.31
+
+  int2:
+    build:
+      context: ./shared/int
+    container_name: int2
+    environment:
+      - SERVER_TYPE=integration
+    volumes:
+      - shared_logs:/var/log/shared
+    networks:
+      lab_net:
+        ipv4_address: 172.20.0.32
+
+networks:
+  lab_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  minio_data:
+  es_data:
+  shared_logs:
